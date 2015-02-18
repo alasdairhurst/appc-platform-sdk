@@ -337,10 +337,7 @@ describe('appc-platform-AppC', function() {
 				AppC.Cloud.createNamedApp(currentSession, "", function(err, res) {
 					should.exist(err);
 					should.not.exist(res);
-					should.exist(err.message);
-					console.log(err.message);
-					// we want a better response???
-					err.message.should.equal('unexpected response from the server');
+					err.should.equal('Invalid parameter: name');
 					done();
 				});
 			});
@@ -414,6 +411,8 @@ describe('appc-platform-AppC', function() {
 			});
 
 			it('should create an Arrow DB user object', function(done) {
+				should.exist(api);
+				should.exist(api.guid);
 				AppC.Cloud.createUser(currentSession, api.guid,{
 					password_confirmation: "test",
 					password: "test",
@@ -441,6 +440,8 @@ describe('appc-platform-AppC', function() {
 			});
 
 			it('should fail to create an Arrow DB user object with not enough credentials', function(done) {
+				should.exist(api);
+				should.exist(api.guid);
 				AppC.Cloud.createUser(currentSession, api.guid,{
 					password_confirmation: "test",
 					password: "test"

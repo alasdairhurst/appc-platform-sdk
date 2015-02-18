@@ -35,7 +35,9 @@ browser.
 					browser
 						.waitFor('input[name="Email"]', 10000, expectNoErr)
 						.element('css selector', 'input[name="Email"]', expectNoErr)
+						.pause(100)
 						.addValue('input[name="Email"]', global.$config.gmail.email, expectNoErr)
+						.pause(100)
 						.addValue('input[name="Passwd"]', global.$config.gmail.password, expectNoErr)
 						.pause(5000)
 						.click('input[name="signIn"]')
