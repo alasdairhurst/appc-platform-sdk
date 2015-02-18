@@ -33,6 +33,7 @@
     "prompt": "^0.2.14",
     "should": "^4.0.4",
     "mocha": "2.1.0",
+	"istanbul": "^0.3.5",
     "underscore": "1.7.0",
 	"appc-registry-sdk": "*",
 	"webdriverio": "2.2.2"

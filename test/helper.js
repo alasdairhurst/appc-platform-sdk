@@ -71,7 +71,6 @@ browser.
 				.url("https://gmail.com", expectNoErr)
 				.waitFor('div.ov', 5000, function(err, result){
 					if(err){
-						console.log(err);
 						setTimeout(poll, 5000);
 					} else {
 						browser
@@ -271,7 +270,6 @@ function cloneSession(session) {
 
 expectNoErr = function() {
 	return function(err, res) {
-		console.log(err);
 		should.not.exist(err);
 	}
 };
