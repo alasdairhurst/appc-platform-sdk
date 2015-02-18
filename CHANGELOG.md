@@ -1,3 +1,7 @@
+# 1.0.25 (02-17-2015)
+
+- added unit tests
+
 # 1.0.24 (01-16-2015)
 
 - add debug logging on form parameters of request

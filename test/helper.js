@@ -1,12 +1,141 @@
 var ConfigLoader = require('./conf/loader'),
-	_= require('underscore');
+	_= require('underscore'),
+	registry = require('appc-registry-sdk'),
+	webdriverio = require('webdriverio'),
+	should = require('should'),
+	loggedIn = false;
+
+ConfigLoader.load();
+var browser = webdriverio.remote(global.$config.browserConfig);
 
 exports.setEnvironment = setEnvironment;
 exports.findEnvs = findEnvs;
 exports.fakeUser = getFakeUser();
 exports.cloneSession = cloneSession;
-exports.loadConfig = ConfigLoader.load;
 exports.getCloudEnvironment = getCloudEnvironment;
+exports.registryLogin = registryLogin;
+exports.getAuthCode = getAuthCode;
+exports.loginGmail = loginGmail;
+exports.deleteEmails = deleteEmails;
+exports.startBrowser = function() { browser.init(); };
+exports.stopBrowser = function() { browser.end(); };
+
+browser.
+	addCommand('loginGmail', function(done) {
+		this.url('https://gmail.com')
+			.getTitle(function (err, result) {
+				should.not.exist(err);
+				result.should.endWith("Gmail");
+			})
+			.call(function(){
+				if(loggedIn){
+					browser
+						.call(done);
+				} else {
+					browser
+						.waitFor('input[name="Email"]', 10000, expectNoErr)
+						.element('css selector', 'input[name="Email"]', expectNoErr)
+						.addValue('input[name="Email"]', global.$config.gmail.email, expectNoErr)
+						.addValue('input[name="Passwd"]', global.$config.gmail.password, expectNoErr)
+						.pause(5000)
+						.click('input[name="signIn"]')
+						.waitFor('div.ov', 5000, function(err, result) {
+							if(!err) {
+								loggedIn = true;
+							}
+							browser.call(done);
+						}
+					);
+				}
+			});
+	})
+	.addCommand('deleteEmails', function(done) {
+		this.url('https://gmail.com')
+			.getTitle(function (err, result) {
+				should.not.exist(err);
+				result.should.endWith("Gmail");
+			})
+			.call(function(){
+				if(loggedIn){
+					browser
+						.call(poll);
+				} else {
+					browser
+						.loginGmail(poll);
+				}
+			});
+		function poll(){
+			browser
+				.url("https://gmail.com", expectNoErr)
+				.waitFor('div.ov', 5000, function(err, result){
+					if(err){
+						console.log(err);
+						setTimeout(poll, 5000);
+					} else {
+						browser
+							.pause(1000)
+							.waitFor('span.T-Jo', 5000, expectNoErr)
+							.click('span.T-Jo', expectNoErr)
+							.pause(500)
+							.click('.ar9', function() {
+								browser
+									.pause(500)
+									.call(done);
+							})
+
+					}
+				}
+			);
+		}
+	})
+	.addCommand('getAuthCode', function(done){
+		this.url('https://gmail.com')
+			.getTitle(function (err, result) {
+				should.not.exist(err);
+				result.should.endWith("Gmail");
+			})
+			.call(function(){
+				if(loggedIn){
+					browser
+						.call(poll);
+				} else {
+					browser
+						.loginGmail(poll);
+				}
+			});
+		function poll(){
+			browser
+				.url("https://gmail.com", expectNoErr)
+				.waitFor('span[email="noreply@appcelerator.com"].zF', 5000, function(err, result){
+					if(err){
+						setTimeout(poll, 5000);
+					} else {
+						browser
+							.pause(1000)
+							.waitFor('.y6', 5000, expectNoErr)
+							.click('.y6', expectNoErr)
+							.waitFor('p[style="font-family:Helvetica,sans-serif;font-size:14px;line-height:20px;margin-left:20px;margin-right:20px;color:#333333"] b', 5000, expectNoErr)
+							.getText('p[style="font-family:Helvetica,sans-serif;font-size:14px;line-height:20px;margin-left:20px;margin-right:20px;color:#333333"] b', function(err, result) {
+								done(null, result);
+							}
+						);
+					}
+				}
+			);
+		}
+	});
+
+function deleteEmails(callback) {
+	browser.deleteEmails(callback);
+}
+
+function getAuthCode(callback) {
+	browser.getAuthCode(callback);
+}
+
+function loginGmail(callback) {
+	browser.loginGmail(callback);
+}
 
 function getCloudEnvironment(sdk, session, type, name, callback) {
 	try {
@@ -14,6 +143,24 @@ function getCloudEnvironment(sdk, session, type, name, callback) {
 	} catch (err) {
 		return callback(err);
 	}
+}
+
+function registryLogin(username, password, callback) {
+	var REGISTRY_URL = global.$config.registry || 'https://software.appcelerator.com',
+		api = new registry('login');
+	api.baseurl = REGISTRY_URL;
+	api.body({
+		username: username,
+		password: password
+	});
+	api.send(function(err, res) {
+		if (err) { return callback(err); }
+		if (res && res.body && res.body.session) {
+			return callback(null, res.body.session);
+		} else {
+			return callback(new Error('Malformed response from registry'));
+		}
+	});
 }
 
 
@@ -119,3 +266,11 @@ function cloneSession(session) {
 	clone.isValid = session.isValid;
 	return clone;
 }
+
+expectNoErr = function() {
+	return function(err, res) {
+		console.log(err);
+		should.not.exist(err);
+	}
+};
+

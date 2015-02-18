@@ -5,15 +5,6 @@ var should = require('should'),
 	AppC,
 	currentSession;
 
-helper.loadConfig();
-
-
-//TODO: // use existing session from something else
-//auth.createsessionfromid
-
-//TODO: //  set up automation test?
-//auth.verifylogincode
-
 describe('appc-platform-AppC', function() {
 	this.timeout(50000);
 	describe('setup', function() {
@@ -77,18 +68,28 @@ describe('appc-platform-AppC', function() {
 
 
 	describe(global.$config.env + ' environment', function() {
+
 		before(function(){
 			currentSession = undefined;
 			AppC = require('../');
 			AppC.setEnvironment(global.$config.environment);
 		});
 
+
 		describe('auth & session', function() {
+			this.timeout(100000);
+
+			before(function(done) {
+				helper.startBrowser();
+				helper.loginGmail(function () {
+					helper.deleteEmails(done);
+				});
+			});
 
 			it('fake user should not be able to log in', function(done){
 				var fakeuser = helper.fakeUser;
 				AppC.Auth.login(fakeuser.username, fakeuser.password, function(err, result) {
-					should(result).not.be.ok;
+					should.not.exist(result);
 					should.exist(err);
 					done();
 				});
@@ -97,7 +98,6 @@ describe('appc-platform-AppC', function() {
 			it('user should be able to log in', function(done) {
 				var user = global.$config.user;
 				AppC.Auth.login(user.username, user.password, function(err, result){
-					should(result).be.ok;
 					should.not.exist(err);
 					should.exist(result);
 					currentSession = result;
@@ -107,14 +107,11 @@ describe('appc-platform-AppC', function() {
 
 			it('session should be valid', function() {
 				should.exist(currentSession);
-				should(currentSession).be.ok;
 				currentSession.isValid().should.equal(true);
 			});
 
-
 			it('should be able to request an auth code with a vaild session', function(done) {
 				should.exist(currentSession);
-				should(currentSession).be.ok;
 				AppC.Auth.requestLoginCode(currentSession, false, function(err, res) {
 					should.not.exist(err);
 					should.exist(res);
@@ -133,6 +130,21 @@ describe('appc-platform-AppC', function() {
 					err.should.have.property('message');
 					err.message.should.equal('session is not valid');
 					done();
+				});
+			});
+
+			it('should verify the login code that was requested earlier', function(done){
+
+				helper.getAuthCode(function(err, res) {
+					helper.stopBrowser();
+					should.not.exist(err);
+					should.exist(res);
+					AppC.Auth.verifyLoginCode(currentSession, res, function(err, res) {
+						should.not.exist(err);
+						should.exist(res);
+						res.should.equal(true);
+						done();
+					});
 				});
 			});
 
@@ -159,6 +171,42 @@ describe('appc-platform-AppC', function() {
 					currentSession = undefined;
 					should(currentSession).not.be.ok;
 					done();
+				});
+			});
+
+			it('should fail to create a session from invalid ID', function(done) {
+				AppC.Auth.createSessionFromID("1234", function(err, session) {
+					should.exist(err);
+					should.not.exist(session);
+					should.exist(err.message);
+					err.message.should.equal("You do not have access privileges to view this content.");
+					done();
+				});
+			});
+
+			it('should create a session from ID', function(done) {
+				var username = global.$config.user.username,
+					password = global.$config.user.password;
+				helper.registryLogin(username, password, function(err, res){
+					should.not.exist(err);
+					should.exist(res);
+					should.exist(res.sid);
+					AppC.Auth.createSessionFromID(res.sid, function(err, session) {
+						should.not.exist(err);
+						should.exist(session);
+						should.exist(session.id);
+						session.id.should.equal(res.sid);
+						should.exist(session.user);
+						should.exist(session.user._id);
+						should.exist(session.user.email);
+						session.user.email.should.equal(username);
+						should.exist(session.user.user_id);
+						should.exist(session.user.guid);
+						should.exist(session.user.org_id);
+						should.exist(session.user.org);
+						should.exist(session.orgs);
+						done();
+					});
 				});
 			});
 		});
